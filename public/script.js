@@ -646,45 +646,21 @@ class ChatBot {
     }
 
     async sendMessageToAPI(message, images = [], files = []) {
-        const messages = this.getCurrentChatMessages();
+        // Process message content with files
+        let finalMessage = message || '';
         
-        // Create message content with text, images and files
-        let messageContent = [];
-        
-        // Add text content
-        if (message) {
-            messageContent.push({ type: 'text', text: message });
-        }
-        
-        // Add file contents to text
+        // Add file contents to message
         if (files.length > 0) {
             const fileContents = files.map(file => {
                 return `\n\n**File: ${file.name}**\n\`\`\`\n${file.content}\n\`\`\``;
             }).join('');
             
-            if (message) {
-                messageContent[0].text += fileContents;
+            if (finalMessage) {
+                finalMessage += fileContents;
             } else {
-                messageContent.push({ type: 'text', text: `Here are the uploaded files:${fileContents}` });
+                finalMessage = `Here are the uploaded files:${fileContents}`;
             }
         }
-        
-        // Add images to message content
-        for (const img of images) {
-            messageContent.push({
-                type: 'image_url',
-                image_url: {
-                    url: img.dataUrl
-                }
-            });
-        }
-        
-        messages.push({ 
-            role: 'user', 
-            content: messageContent.length === 1 && messageContent[0].type === 'text' 
-                ? messageContent[0].text 
-                : messageContent 
-        });
         
         // Ensure settings exist with default values
         if (!this.settings) {
@@ -694,7 +670,8 @@ class ChatBot {
         const temperature = this.settings.temperature || 0.7;
         
         console.log('Sending message to API:', { 
-            messageCount: messages.length, 
+            message: finalMessage,
+            imageCount: images.length,
             temperature: temperature, 
             hasImages: images.length > 0,
             hasFiles: files.length > 0
@@ -707,7 +684,11 @@ class ChatBot {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    messages: messages,
+                    message: finalMessage,
+                    images: images.map(img => ({
+                        data: img.dataUrl,
+                        mimeType: img.type || 'image/jpeg'
+                    })),
                     temperature: temperature
                 }),
             });

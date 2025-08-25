@@ -33,15 +33,22 @@ export default async function handler(req, res) {
   try {
     const { message, images, temperature = 0.7 } = req.body;
 
-    if (!message && (!images || images.length === 0)) {
-      return res.status(400).json({ error: 'Message or images required' });
+    // Validate input - message should be non-empty string or images should be provided
+    const hasMessage = message && typeof message === 'string' && message.trim().length > 0;
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+
+    if (!hasMessage && !hasImages) {
+      return res.status(400).json({ 
+        error: 'Message or images required',
+        details: 'Please provide either a text message or upload images'
+      });
     }
 
     const parts = [];
     
     // Add text message if provided
-    if (message) {
-      parts.push({ text: message });
+    if (hasMessage) {
+      parts.push({ text: message.trim() });
     }
 
     // Add images if provided
