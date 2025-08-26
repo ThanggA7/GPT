@@ -46,7 +46,7 @@ app.post("/api/chat", async (req, res) => {
   }, 30000);
 
   try {
-    const { message, images = [], temperature = 0.7 } = req.body || {};
+    const { message, images = [], temperature = 0.7, conversationHistory = [] } = req.body || {};
     
     // Validate input - message should be non-empty string or images should be provided
     const hasMessage = message && typeof message === 'string' && message.trim().length > 0;
@@ -60,17 +60,39 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const parts = [];
+    console.log(`💭 Processing request with ${conversationHistory.length} previous messages`);
+
+    // Build conversation contents for Gemini
+    const contents = [];
+    
+    // Add conversation history (limit to last 20 messages to avoid token limit)
+    const recentHistory = conversationHistory.slice(-20);
+    for (const historyItem of recentHistory) {
+      if (historyItem.role === 'user') {
+        contents.push({
+          role: 'user',
+          parts: [{ text: historyItem.content }]
+        });
+      } else if (historyItem.role === 'assistant') {
+        contents.push({
+          role: 'model', // Gemini uses 'model' instead of 'assistant'
+          parts: [{ text: historyItem.content }]
+        });
+      }
+    }
+
+    // Add current message parts
+    const currentParts = [];
     
     // Add text message if provided
     if (hasMessage) {
-      parts.push({ text: message.trim() });
+      currentParts.push({ text: message.trim() });
     }
 
     // Add images if provided
     if (hasImages) {
       for (const image of images) {
-        parts.push({
+        currentParts.push({
           inline_data: {
             mime_type: image.mimeType || 'image/jpeg',
             data: image.data.split(',')[1] // Remove data:image/jpeg;base64, prefix
@@ -78,11 +100,15 @@ app.post("/api/chat", async (req, res) => {
         });
       }
     }
+    
+    // Add current user message
+    contents.push({
+      role: 'user',
+      parts: currentParts
+    });
 
     const requestBody = {
-      contents: [{
-        parts: parts
-      }],
+      contents: contents,
       generationConfig: {
         temperature: Math.max(0, Math.min(1, temperature)),
         maxOutputTokens: 4096,

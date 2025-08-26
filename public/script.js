@@ -206,6 +206,9 @@ class ChatBot {
         this.updateChatTitle('Cuộc trò chuyện mới', 'Tôi có thể giúp bạn điều gì hôm nay?');
         this.toggleSidebar(false);
         
+        // Hide memory indicator when starting new chat
+        this.hideMemoryIndicator();
+        
         // Clear active history item
         this.historyList?.querySelectorAll('.history-item').forEach(item => {
             item.classList.remove('active');
@@ -669,13 +672,25 @@ class ChatBot {
         
         const temperature = this.settings.temperature || 0.7;
         
+        // Get current conversation history (exclude current message)
+        const conversationHistory = this.getCurrentChatMessages();
+        
         console.log('Sending message to API:', { 
             message: finalMessage,
             imageCount: images.length,
             temperature: temperature, 
             hasImages: images.length > 0,
-            hasFiles: files.length > 0
+            hasFiles: files.length > 0,
+            historyLength: conversationHistory.length
         });
+        
+        // Add memory indicator if there's conversation history
+        if (conversationHistory.length > 0) {
+            console.log(`💭 Using conversation memory (${conversationHistory.length} previous messages)`);
+            this.showMemoryIndicator(conversationHistory.length);
+        } else {
+            this.hideMemoryIndicator();
+        }
         
         try {
             const response = await fetch('/api/chat', {
@@ -689,7 +704,8 @@ class ChatBot {
                         data: img.dataUrl,
                         mimeType: img.type || 'image/jpeg'
                     })),
-                    temperature: temperature
+                    temperature: temperature,
+                    conversationHistory: conversationHistory
                 }),
             });
             
@@ -754,29 +770,21 @@ class ChatBot {
         messageElements.forEach(messageEl => {
             const isUser = messageEl.classList.contains('user');
             const textElement = messageEl.querySelector('.message-text');
-            const imageElements = messageEl.querySelectorAll('.message-image');
             
             let content = '';
             if (textElement) {
-                content = textElement.textContent;
+                // Get only text content, strip HTML
+                content = textElement.textContent || textElement.innerText || '';
+                content = content.trim();
             }
             
-            // If has images, create multimodal content
-            if (imageElements.length > 0) {
-                const messageContent = [];
-                if (content) {
-                    messageContent.push({ type: 'text', text: content });
-                }
-                // Note: For API calls, we can't include images from previous messages
-                // since we don't store them in a format Gemini can process
-                // Only the current message images are sent
-                content = messageContent.length > 0 ? messageContent : content;
+            // Skip empty messages
+            if (content) {
+                messages.push({
+                    role: isUser ? 'user' : 'assistant',
+                    content: content
+                });
             }
-            
-            messages.push({
-                role: isUser ? 'user' : 'assistant',
-                content: content
-            });
         });
         
         return messages;
@@ -1171,6 +1179,24 @@ window.addEventListener('beforeunload', () => {
         localStorage.setItem('lastChatId', window.chatBot.currentChatId);
     }
 });
+
+ChatBot.prototype.showMemoryIndicator = function(messageCount) {
+    const indicator = document.getElementById('memoryIndicator');
+    if (indicator) {
+        const span = indicator.querySelector('span');
+        if (span) {
+            span.textContent = `Đang sử dụng bộ nhớ cuộc trò chuyện (${messageCount} tin nhắn)`;
+        }
+        indicator.style.display = 'flex';
+    }
+};
+
+ChatBot.prototype.hideMemoryIndicator = function() {
+    const indicator = document.getElementById('memoryIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+};
 
 // Auto-save functionality
 setInterval(() => {

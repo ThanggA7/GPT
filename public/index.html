@@ -1,232 +1,303 @@
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>AI Chat Bot - GPT Clone</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" rel="stylesheet" id="hljs-light">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+      rel="stylesheet"
+      id="hljs-light"
+    />
+  </head>
+  <body>
     <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <i class="fas fa-robot"></i>
-                    <span>AI Chat</span>
-                </div>
-                <button class="sidebar-toggle mobile-only" id="closeSidebar">
-                    <i class="fas fa-times"></i>
-                </button>
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <i class="fas fa-robot"></i>
+            <span>AI Chat</span>
+          </div>
+          <button class="sidebar-toggle mobile-only" id="closeSidebar">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="new-chat-section">
+          <button class="new-chat-btn" id="newChatBtn">
+            <i class="fas fa-plus"></i>
+            <span>Cuộc trò chuyện mới</span>
+          </button>
+        </div>
+
+        <div class="chat-history">
+          <div class="history-header">
+            <h3>Lịch sử chat</h3>
+            <button class="clear-history-btn" id="clearHistoryBtn">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          <div class="history-list" id="historyList">
+            <!-- Chat history items will be dynamically added here -->
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="settings-menu">
+            <button class="settings-btn" id="settingsBtn">
+              <i class="fas fa-cog"></i>
+              <span>Cài đặt</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="main-content">
+        <!-- Header -->
+        <header class="chat-header">
+          <button class="sidebar-toggle desktop-hidden" id="openSidebar">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="chat-title">
+            <h1 id="chatTitle">AI Assistant</h1>
+            <p id="chatSubtitle">Tôi có thể giúp bạn điều gì hôm nay?</p>
+            <div class="memory-indicator" id="memoryIndicator" style="display: none;">
+              <i class="fas fa-brain"></i>
+              <span>Đang sử dụng bộ nhớ cuộc trò chuyện</span>
             </div>
-            
-            <div class="new-chat-section">
-                <button class="new-chat-btn" id="newChatBtn">
-                    <i class="fas fa-plus"></i>
-                    <span>Cuộc trò chuyện mới</span>
-                </button>
+          </div>
+          <div class="header-actions">
+            <button class="action-btn" id="themeToggle">
+              <i class="fas fa-moon"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Welcome screen -->
+        <div class="welcome-screen" id="welcomeScreen">
+          <div class="welcome-content">
+            <div class="welcome-icon">
+              <i class="fas fa-robot"></i>
             </div>
-            
-            <div class="chat-history">
-                <div class="history-header">
-                    <h3>Lịch sử chat</h3>
-                    <button class="clear-history-btn" id="clearHistoryBtn">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-                <div class="history-list" id="historyList">
-                    <!-- Chat history items will be dynamically added here -->
-                </div>
+            <h2>Chào mừng đến với AI Chat</h2>
+            <p>
+              Tôi là trợ lý AI thông minh của bạn. Hãy bắt đầu cuộc trò chuyện!
+            </p>
+
+            <div class="example-prompts">
+              <div
+                class="prompt-card"
+                data-prompt="Giải thích về Machine Learning và viết code Python đơn giản"
+              >
+                <i class="fas fa-brain"></i>
+                <span>Machine Learning với code Python</span>
+              </div>
+              <div
+                class="prompt-card"
+                data-prompt="Viết một bài thơ về mùa xuân với format Markdown đẹp"
+              >
+                <i class="fas fa-feather-alt"></i>
+                <span>Thơ mùa xuân với Markdown</span>
+              </div>
+              <div
+                class="prompt-card"
+                data-prompt="Tạo bảng so sánh các framework JavaScript phổ biến"
+              >
+                <i class="fas fa-table"></i>
+                <span>Bảng so sánh JavaScript frameworks</span>
+              </div>
+              <div
+                class="prompt-card"
+                data-prompt="Hướng dẫn tạo REST API với Node.js, Express (có code mẫu)"
+              >
+                <i class="fas fa-code"></i>
+                <span>REST API Node.js Tutorial</span>
+              </div>
             </div>
-            
-            <div class="sidebar-footer">
-                <div class="settings-menu">
-                    <button class="settings-btn" id="settingsBtn">
-                        <i class="fas fa-cog"></i>
-                        <span>Cài đặt</span>
-                    </button>
+          </div>
+        </div>
+
+        <!-- Chat messages -->
+        <div class="chat-container" id="chatContainer">
+          <div class="messages-container" id="messagesContainer">
+            <!-- Messages will be dynamically added here -->
+          </div>
+        </div>
+
+        <!-- Input section -->
+        <div class="input-section">
+          <form class="message-form" id="messageForm">
+            <div class="input-wrapper">
+              <div
+                class="attached-images"
+                id="attachedImages"
+                style="display: none"
+              >
+                <!-- Preview của ảnh đã chọn sẽ hiển thị ở đây -->
+              </div>
+              <div
+                class="attached-files"
+                id="attachedFiles"
+                style="display: none"
+              >
+                <!-- Preview của file đã chọn sẽ hiển thị ở đây -->
+              </div>
+              <div class="input-content">
+                <textarea
+                  id="messageInput"
+                  placeholder="Nhập tin nhắn của bạn..."
+                  rows="1"
+                  maxlength="4000"
+                ></textarea>
+                <div class="input-actions">
+                  <input
+                    type="file"
+                    id="imageInput"
+                    accept="image/*"
+                    style="display: none"
+                    multiple
+                  />
+                  <input
+                    type="file"
+                    id="fileInput"
+                    accept=".txt,.md,.js,.py,.html,.css,.json,.xml,.csv"
+                    style="display: none"
+                    multiple
+                  />
+                  <button
+                    type="button"
+                    class="attach-btn"
+                    id="attachImageBtn"
+                    title="Đính kèm ảnh"
+                  >
+                    <i class="fas fa-image"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="attach-btn"
+                    id="attachFileBtn"
+                    title="Đính kèm file"
+                  >
+                    <i class="fas fa-paperclip"></i>
+                  </button>
+                  <button type="submit" class="send-btn" id="sendBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
                 </div>
+              </div>
             </div>
-        </aside>
-        
-        <!-- Main content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="chat-header">
-                <button class="sidebar-toggle desktop-hidden" id="openSidebar">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="chat-title">
-                    <h1 id="chatTitle">AI Assistant</h1>
-                    <p id="chatSubtitle">Tôi có thể giúp bạn điều gì hôm nay?</p>
-                </div>
-                <div class="header-actions">
-                    <button class="action-btn" id="themeToggle">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                </div>
-            </header>
-            
-            <!-- Welcome screen -->
-            <div class="welcome-screen" id="welcomeScreen">
-                <div class="welcome-content">
-                    <div class="welcome-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h2>Chào mừng đến với AI Chat</h2>
-                    <p>Tôi là trợ lý AI thông minh của bạn. Hãy bắt đầu cuộc trò chuyện!</p>
-                    
-                    <div class="example-prompts">
-                        <div class="prompt-card" data-prompt="Giải thích về Machine Learning và viết code Python đơn giản">
-                            <i class="fas fa-brain"></i>
-                            <span>Machine Learning với code Python</span>
-                        </div>
-                        <div class="prompt-card" data-prompt="Viết một bài thơ về mùa xuân với format Markdown đẹp">
-                            <i class="fas fa-feather-alt"></i>
-                            <span>Thơ mùa xuân với Markdown</span>
-                        </div>
-                        <div class="prompt-card" data-prompt="Tạo bảng so sánh các framework JavaScript phổ biến">
-                            <i class="fas fa-table"></i>
-                            <span>Bảng so sánh JavaScript frameworks</span>
-                        </div>
-                        <div class="prompt-card" data-prompt="Hướng dẫn tạo REST API với Node.js, Express (có code mẫu)">
-                            <i class="fas fa-code"></i>
-                            <span>REST API Node.js Tutorial</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="input-footer">
+              <div class="char-counter"><span id="charCount">0</span>/4000</div>
+              <div class="input-hint">
+                Nhấn Enter để gửi, Shift + Enter để xuống dòng
+              </div>
             </div>
-            
-            <!-- Chat messages -->
-            <div class="chat-container" id="chatContainer">
-                <div class="messages-container" id="messagesContainer">
-                    <!-- Messages will be dynamically added here -->
-                </div>
-            </div>
-            
-            <!-- Input section -->
-            <div class="input-section">
-                <form class="message-form" id="messageForm">
-                    <div class="input-wrapper">
-                        <div class="attached-images" id="attachedImages" style="display: none;">
-                            <!-- Preview của ảnh đã chọn sẽ hiển thị ở đây -->
-                        </div>
-                        <div class="attached-files" id="attachedFiles" style="display: none;">
-                            <!-- Preview của file đã chọn sẽ hiển thị ở đây -->
-                        </div>
-                        <div class="input-content">
-                            <textarea 
-                                id="messageInput" 
-                                placeholder="Nhập tin nhắn của bạn..." 
-                                rows="1"
-                                maxlength="4000"
-                            ></textarea>
-                            <div class="input-actions">
-                                <input type="file" id="imageInput" accept="image/*" style="display: none;" multiple>
-                                <input type="file" id="fileInput" accept=".txt,.md,.js,.py,.html,.css,.json,.xml,.csv" style="display: none;" multiple>
-                                <button type="button" class="attach-btn" id="attachImageBtn" title="Đính kèm ảnh">
-                                    <i class="fas fa-image"></i>
-                                </button>
-                                <button type="button" class="attach-btn" id="attachFileBtn" title="Đính kèm file">
-                                    <i class="fas fa-paperclip"></i>
-                                </button>
-                                <button type="submit" class="send-btn" id="sendBtn" disabled>
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="input-footer">
-                        <div class="char-counter">
-                            <span id="charCount">0</span>/4000
-                        </div>
-                        <div class="input-hint">
-                            Nhấn Enter để gửi, Shift + Enter để xuống dòng
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </main>
+          </form>
+        </div>
+      </main>
     </div>
-    
+
     <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <div class="spinner"></div>
-            <p>AI đang suy nghĩ...</p>
-        </div>
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>AI đang suy nghĩ...</p>
+      </div>
     </div>
-    
+
     <!-- Settings modal -->
     <div class="modal-overlay" id="settingsModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Cài đặt</h3>
-                <button class="close-modal-btn" id="closeSettingsModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-content">
-                <div class="setting-group">
-                    <label>Nhiệt độ (Temperature)</label>
-                    <div class="slider-container">
-                        <input type="range" id="temperatureSlider" min="0" max="1" step="0.1" value="0.7">
-                        <span id="temperatureValue">0.7</span>
-                    </div>
-                    <p class="setting-description">Điều chỉnh tính sáng tạo của AI (0 = bảo thủ, 1 = sáng tạo)</p>
-                </div>
-                
-                <div class="setting-group">
-                    <label>Giao diện</label>
-                    <div class="theme-options">
-                        <button class="theme-option active" data-theme="light">
-                            <i class="fas fa-sun"></i>
-                            Sáng
-                        </button>
-                        <button class="theme-option" data-theme="dark">
-                            <i class="fas fa-moon"></i>
-                            Tối
-                        </button>
-                        <button class="theme-option" data-theme="auto">
-                            <i class="fas fa-adjust"></i>
-                            Tự động
-                        </button>
-                    </div>
-                </div>
-            </div>
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Cài đặt</h3>
+          <button class="close-modal-btn" id="closeSettingsModal">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
+        <div class="modal-content">
+          <div class="setting-group">
+            <label>Nhiệt độ (Temperature)</label>
+            <div class="slider-container">
+              <input
+                type="range"
+                id="temperatureSlider"
+                min="0"
+                max="1"
+                step="0.1"
+                value="0.7"
+              />
+              <span id="temperatureValue">0.7</span>
+            </div>
+            <p class="setting-description">
+              Điều chỉnh tính sáng tạo của AI (0 = bảo thủ, 1 = sáng tạo)
+            </p>
+          </div>
+
+          <div class="setting-group">
+            <label>Giao diện</label>
+            <div class="theme-options">
+              <button class="theme-option active" data-theme="light">
+                <i class="fas fa-sun"></i>
+                Sáng
+              </button>
+              <button class="theme-option" data-theme="dark">
+                <i class="fas fa-moon"></i>
+                Tối
+              </button>
+              <button class="theme-option" data-theme="auto">
+                <i class="fas fa-adjust"></i>
+                Tự động
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Image viewer modal -->
     <div class="modal-overlay" id="imageViewerModal">
-        <div class="image-viewer-modal">
-            <button class="close-modal-btn" id="closeImageViewer">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="image-viewer-content">
-                <img id="viewerImage" src="" alt="">
-                <div class="image-viewer-info">
-                    <span id="viewerImageName"></span>
-                    <div class="image-viewer-actions">
-                        <button class="viewer-action-btn" id="downloadImage">
-                            <i class="fas fa-download"></i> Tải xuống
-                        </button>
-                        <button class="viewer-action-btn" id="copyImageUrl">
-                            <i class="fas fa-copy"></i> Copy URL
-                        </button>
-                    </div>
-                </div>
+      <div class="image-viewer-modal">
+        <button class="close-modal-btn" id="closeImageViewer">
+          <i class="fas fa-times"></i>
+        </button>
+        <div class="image-viewer-content">
+          <img id="viewerImage" src="" alt="" />
+          <div class="image-viewer-info">
+            <span id="viewerImageName"></span>
+            <div class="image-viewer-actions">
+              <button class="viewer-action-btn" id="downloadImage">
+                <i class="fas fa-download"></i> Tải xuống
+              </button>
+              <button class="viewer-action-btn" id="copyImageUrl">
+                <i class="fas fa-copy"></i> Copy URL
+              </button>
             </div>
+          </div>
         </div>
+      </div>
     </div>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
