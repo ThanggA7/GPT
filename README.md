@@ -159,4 +159,4 @@ MIT License - feel free to use and modify for your projects.
 
 ---
 
-Made with ❤️ for modern AI chat experiences
+

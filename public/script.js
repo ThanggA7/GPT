@@ -700,54 +700,51 @@ class ChatBot {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            const reader = response.body.getReader();
-            let result = '';
+            const data = await response.json();
             
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = new TextDecoder().decode(value);
-                const lines = chunk.split('\n');
-                
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') {
-                            return result || 'Xin lỗi, tôi không nhận được phản hồi từ AI.';
-                        }
-                        try {
-                            const parsed = JSON.parse(data);
-                            if (parsed.token) {
-                                result += parsed.token;
-                            } else if (parsed.error) {
-                                throw new Error(parsed.error);
-                            }
-                        } catch (e) {
-                            console.warn('Failed to parse chunk:', data, e);
-                        }
-                    } else if (line.startsWith('event: error')) {
-                        // Read next line for error data
-                        const errorLine = lines[lines.indexOf(line) + 1];
-                        if (errorLine && errorLine.startsWith('data: ')) {
-                            const errorData = errorLine.slice(6);
-                            try {
-                                const errorObj = JSON.parse(errorData);
-                                throw new Error(errorObj.error || errorData);
-                            } catch (e) {
-                                throw new Error(errorData);
-                            }
-                        }
-                    }
-                }
+            if (data.error) {
+                throw new Error(data.error);
             }
             
-            return result || 'Xin lỗi, tôi không nhận được phản hồi từ AI.';
+            return data.message || 'Xin lỗi, tôi không nhận được phản hồi từ AI.';
             
         } catch (error) {
             console.error('API Error:', error);
+            
+            // Check if it's a retryable error and we haven't exceeded max attempts
+            if (this.shouldRetryError(error) && (this.currentRetryAttempt || 0) < 2) {
+                this.currentRetryAttempt = (this.currentRetryAttempt || 0) + 1;
+                console.log(`🔄 Retrying request... (attempt ${this.currentRetryAttempt + 1}/3)`);
+                
+                // Wait before retry with exponential backoff
+                const waitTime = Math.pow(2, this.currentRetryAttempt) * 1000; // 2s, 4s
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                
+                return this.sendMessageToAPI(finalMessage, images, files);
+            }
+            
+            // Reset retry counter on final failure
+            this.currentRetryAttempt = 0;
             throw error;
         }
+    }
+
+    shouldRetryError(error) {
+        const retryableMessages = [
+            'fetch failed',
+            'network error', 
+            'timeout',
+            'AI đang quá tải',
+            'không nhận được phản hồi',
+            'HTTP 408',
+            'HTTP 503',
+            'HTTP 429',
+            'quá tải'
+        ];
+        
+        return retryableMessages.some(msg => 
+            error.message.toLowerCase().includes(msg.toLowerCase())
+        );
     }
 
     getCurrentChatMessages() {

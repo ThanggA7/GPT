@@ -15,185 +15,236 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "public")));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
 if (!GEMINI_API_KEY) {
   console.error("❌ Thiếu GEMINI_API_KEY trong .env");
   process.exit(1);
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5500;
 
 app.options("/api/chat", (req, res) => res.sendStatus(204));
 
 app.post("/api/chat", async (req, res) => {
   console.log("📨 Received chat request:", {
-    messagesCount: req.body?.messages?.length,
+    hasMessage: !!req.body?.message,
+    imageCount: req.body?.images?.length || 0,
     temperature: req.body?.temperature,
+    timestamp: new Date().toISOString()
   });
 
-  try {
-    let { messages, temperature = 0.7 } = req.body || {};
-    if (!Array.isArray(messages)) {
-      console.error("❌ Invalid messages format");
-      return res.status(400).json({ error: "messages must be an array" });
-    }
-
-    // SSE headers
-    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    // Chỉ gửi messages role user/assistant, bỏ system (Gemini không hỗ trợ system)
-    const geminiMessages = messages
-      .filter((m) => m.role !== "system")
-      .map((m) => {
-        if (typeof m.content === "string") {
-          return { role: m.role, parts: [{ text: m.content }] };
-        } else if (Array.isArray(m.content)) {
-          // Xử lý message với text và image
-          const parts = [];
-
-          m.content.forEach((item) => {
-            if (item.type === "text" && item.text) {
-              parts.push({ text: item.text });
-            } else if (item.type === "image_url" && item.image_url) {
-              // Convert data URL to Gemini format
-              const dataUrl = item.image_url.url;
-              if (dataUrl.startsWith("data:image/")) {
-                const [header, base64Data] = dataUrl.split(",");
-                const mimeType =
-                  header.match(/data:(image\/[^;]+)/)?.[1] || "image/jpeg";
-
-                parts.push({
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: base64Data,
-                  },
-                });
-              }
-            }
-          });
-
-          return {
-            role: m.role,
-            parts: parts.length > 0 ? parts : [{ text: "" }],
-          };
-        } else {
-          return { role: m.role, parts: [{ text: "" }] };
-        }
+  // Set timeout for the entire request
+  const timeoutId = setTimeout(() => {
+    if (!res.headersSent) {
+      console.error("⏰ Request timeout after 30 seconds");
+      res.status(408).json({ 
+        error: 'Yêu cầu hết thời gian chờ',
+        details: 'AI đang quá tải, vui lòng thử lại sau ít phút'
       });
-
-    // Gọi Gemini API (sử dụng gemini-1.5-flash để hỗ trợ vision tốt hơn)
-    console.log(
-      "🤖 Calling Gemini API with",
-      geminiMessages.length,
-      "messages"
-    );
-
-    // Check if any message contains images
-    const hasImages = geminiMessages.some((msg) =>
-      msg.parts.some((part) => part.inline_data)
-    );
-
-    const model = hasImages ? "gemini-1.5-flash" : "gemini-1.5-flash";
-    console.log(
-      "📸 Using model:",
-      model,
-      hasImages ? "(with vision)" : "(text only)"
-    );
-
-    const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: { temperature },
-        }),
-      }
-    );
-
-    if (!upstream.ok) {
-      const errorText = await upstream.text();
-      console.error("❌ Gemini API error:", upstream.status, errorText);
-      res.write(
-        `event: error\ndata: ${JSON.stringify({
-          error: `API Error: ${upstream.status}`,
-        })}\n\n`
-      );
-      return res.end();
     }
+  }, 30000);
 
-    // Gemini 1.5 Flash response handling with better error checking
-    const data = await upstream.json();
-    console.log("✅ Gemini response received", JSON.stringify(data, null, 2));
-
-    const candidates = data.candidates?.[0];
+  try {
+    const { message, images = [], temperature = 0.7 } = req.body || {};
     
-    // Check for safety ratings or blocked content
-    if (!candidates) {
-      console.log("⚠️ No candidates in response, might be blocked by safety filters");
-      const finishReason = data.candidates?.[0]?.finishReason;
-      let errorMessage = "Xin lỗi, tôi không thể tạo phản hồi cho nội dung này.";
-      
-      if (finishReason === 'SAFETY') {
-        errorMessage = "Nội dung có thể vi phạm chính sách an toàn. Vui lòng thử câu hỏi khác.";
-      } else if (finishReason === 'RECITATION') {
-        errorMessage = "Nội dung có thể vi phạm bản quyền. Vui lòng thử câu hỏi khác.";
+    // Validate input - message should be non-empty string or images should be provided
+    const hasMessage = message && typeof message === 'string' && message.trim().length > 0;
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+
+    if (!hasMessage && !hasImages) {
+      clearTimeout(timeoutId);
+      return res.status(400).json({ 
+        error: 'Message or images required',
+        details: 'Please provide either a text message or upload images'
+      });
+    }
+
+    const parts = [];
+    
+    // Add text message if provided
+    if (hasMessage) {
+      parts.push({ text: message.trim() });
+    }
+
+    // Add images if provided
+    if (hasImages) {
+      for (const image of images) {
+        parts.push({
+          inline_data: {
+            mime_type: image.mimeType || 'image/jpeg',
+            data: image.data.split(',')[1] // Remove data:image/jpeg;base64, prefix
+          }
+        });
       }
-      
-      res.write(`data: ${JSON.stringify({ token: errorMessage })}\n\n`);
-      res.write("data: [DONE]\n\n");
-      return res.end();
+    }
+
+    const requestBody = {
+      contents: [{
+        parts: parts
+      }],
+      generationConfig: {
+        temperature: Math.max(0, Math.min(1, temperature)),
+        maxOutputTokens: 4096,
+        topP: 0.8,
+        topK: 40
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH", 
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        }
+      ]
+    };
+
+    console.log("🤖 Calling Gemini API with", hasImages ? 'text + images' : 'text only');
+
+    // Retry logic with exponential backoff
+    let lastError = null;
+    let response = null;
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🔄 API attempt ${attempt}/3`);
+        
+        const controller = new AbortController();
+        const apiTimeout = setTimeout(() => controller.abort(), 25000); // 25 second timeout per attempt
+        
+        response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(apiTimeout);
+        
+        if (response.ok) {
+          console.log(`✅ API call successful on attempt ${attempt}`);
+          break; // Success, exit retry loop
+        } else {
+          const errorText = await response.text();
+          console.error(`❌ API attempt ${attempt} failed with status ${response.status}:`, errorText);
+          lastError = new Error(`HTTP ${response.status}: ${errorText}`);
+          
+          // Don't retry on client errors (4xx), only server errors (5xx)
+          if (response.status < 500) {
+            throw lastError;
+          }
+        }
+      } catch (error) {
+        console.error(`❌ API attempt ${attempt} error:`, error.message);
+        lastError = error;
+        
+        // Don't retry on abort errors or client errors
+        if (error.name === 'AbortError' || error.message.includes('400')) {
+          throw error;
+        }
+        
+        // Wait before retry (exponential backoff)
+        if (attempt < 3) {
+          const waitTime = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
     
-    // Check finish reason
-    const finishReason = candidates.finishReason;
-    if (finishReason && finishReason !== 'STOP') {
-      console.log("⚠️ Unusual finish reason:", finishReason);
-      let warningMessage = "";
-      
-      if (finishReason === 'MAX_TOKENS') {
-        warningMessage = "\n\n*[Phản hồi có thể bị cắt do giới hạn độ dài]*";
-      } else if (finishReason === 'SAFETY') {
-        warningMessage = "\n\n*[Một phần nội dung có thể bị lọc vì lý do an toàn]*";
-      }
-      
-      const token = candidates?.content?.parts?.[0]?.text ?? "";
-      if (token) {
-        res.write(`data: ${JSON.stringify({ token: token + warningMessage })}\n\n`);
-      } else {
-        res.write(`data: ${JSON.stringify({ token: "Phản hồi bị lọc vì lý do an toàn." + warningMessage })}\n\n`);
-      }
-      res.write("data: [DONE]\n\n");
-      return res.end();
+    if (!response || !response.ok) {
+      throw lastError || new Error('All API attempts failed');
     }
 
-    const token = candidates?.content?.parts?.[0]?.text ?? "";
+    const data = await response.json();
 
-    if (token) {
-      console.log("📤 Sending response token, length:", token.length);
-      res.write(`data: ${JSON.stringify({ token })}\n\n`);
-    } else {
-      console.log("⚠️ Empty response token, sending fallback message");
-      res.write(
-        `data: ${JSON.stringify({
-          token: "Xin lỗi, tôi đã hiểu câu hỏi của bạn nhưng không thể tạo phản hồi phù hợp lúc này. Vui lòng thử lại hoặc đặt câu hỏi khác.",
-        })}\n\n`
-      );
+    if (!data.candidates || data.candidates.length === 0) {
+      console.error('❌ No candidates in response:', data);
+      throw new Error('AI không thể tạo phản hồi, có thể do nội dung bị hạn chế');
     }
 
-    res.write("data: [DONE]\n\n");
-    res.end();
-  } catch (err) {
-    console.error("❌ Server error:", err);
-    res.write(
-      `event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`
-    );
-    res.end();
+    const candidate = data.candidates[0];
+    
+    // Check for safety filters
+    if (candidate.finishReason === 'SAFETY') {
+      return res.status(400).json({
+        error: 'Nội dung bị chặn do vi phạm chính sách an toàn',
+        safetyRatings: candidate.safetyRatings
+      });
+    }
+
+    // Check for other finish reasons
+    if (candidate.finishReason === 'RECITATION') {
+      return res.status(400).json({
+        error: 'Nội dung bị chặn do vi phạm bản quyền'
+      });
+    }
+
+    if (!candidate.content?.parts?.[0]?.text) {
+      console.error('❌ Invalid response structure:', data);
+      return res.status(500).json({
+        error: 'Phản hồi không hợp lệ từ AI',
+        finishReason: candidate.finishReason
+      });
+    }
+
+    const aiResponse = candidate.content.parts[0].text;
+    
+    console.log("✅ Sending response, length:", aiResponse.length);
+    clearTimeout(timeoutId); // Clear timeout on success
+    
+    res.status(200).json({
+      message: aiResponse,
+      finishReason: candidate.finishReason,
+      safetyRatings: candidate.safetyRatings
+    });
+
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    clearTimeout(timeoutId); // Clear timeout on error
+    
+    // Don't send response if already sent (timeout case)
+    if (res.headersSent) {
+      return;
+    }
+    
+    let errorMessage = 'Xin lỗi, tôi không nhận được phản hồi từ AI.';
+    let statusCode = 500;
+    
+    if (error.name === 'AbortError' || error.message.includes('timeout')) {
+      errorMessage = 'AI đang quá tải, vui lòng thử lại sau ít giây';
+      statusCode = 408;
+    } else if (error.message.includes('API key')) {
+      errorMessage = 'Lỗi cấu hình API key';
+      statusCode = 401;
+    } else if (error.message.includes('quota') || error.message.includes('limit')) {
+      errorMessage = 'Đã vượt quá giới hạn API, vui lòng thử lại sau';
+      statusCode = 429;
+    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      errorMessage = 'Lỗi kết nối mạng, vui lòng thử lại';
+      statusCode = 503;
+    } else if (error.message.includes('bị hạn chế') || error.message.includes('candidates')) {
+      errorMessage = 'Nội dung có thể vi phạm chính sách, vui lòng thử câu hỏi khác';
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      retryAfter: statusCode === 429 ? 60 : statusCode === 408 ? 10 : undefined
+    });
   }
 });
 
