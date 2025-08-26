@@ -256,8 +256,10 @@ app.post("/api/chat", async (req, res) => {
       errorMessage = 'Lỗi cấu hình API key';
       statusCode = 401;
     } else if (error.message.includes('quota') || error.message.includes('limit')) {
-      errorMessage = 'Đã vượt quá giới hạn API, vui lòng thử lại sau';
-      statusCode = 429;
+      // Instead of returning error, provide demo response
+      console.log('📝 API quota exceeded, providing demo response');
+      const demoResponse = getDemoResponse(message || '');
+      return res.json({ response: demoResponse.text });
     } else if (error.message.includes('network') || error.message.includes('fetch')) {
       errorMessage = 'Lỗi kết nối mạng, vui lòng thử lại';
       statusCode = 503;
@@ -273,6 +275,93 @@ app.post("/api/chat", async (req, res) => {
     });
   }
 });
+
+// Demo response function when API quota is exceeded
+function getDemoResponse(userMessage) {
+  const message = userMessage.toLowerCase();
+  
+  if (message.includes('machine learning') || message.includes('ml')) {
+    return {
+      text: `# Machine Learning - Học Máy
+
+## Khái niệm cơ bản
+Machine Learning (Học máy) là một nhánh của Trí tuệ nhân tạo (AI) cho phép máy tính học hỏi và đưa ra dự đoán hoặc quyết định mà không cần được lập trình rõ ràng cho từng tác vụ cụ thể.
+
+## Các loại Machine Learning
+1. **Supervised Learning** (Học có giám sát): Sử dụng dữ liệu đã được gán nhãn
+2. **Unsupervised Learning** (Học không giám sát): Tìm pattern trong dữ liệu chưa gán nhãn  
+3. **Reinforcement Learning** (Học tăng cường): Học thông qua phần thưởng và phạt
+
+## Code Python đơn giản - Linear Regression
+
+\`\`\`python
+# Import thư viện cần thiết
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+# Tạo dữ liệu mẫu
+np.random.seed(42)
+X = np.random.rand(100, 1) * 10  # 100 điểm dữ liệu
+y = 2 * X.ravel() + 1 + np.random.randn(100) * 2  # y = 2x + 1 + noise
+
+# Chia dữ liệu thành tập huấn luyện và kiểm tra
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Tạo model Linear Regression
+model = LinearRegression()
+
+# Huấn luyện model
+model.fit(X_train, y_train)
+
+# Dự đoán
+y_pred = model.predict(X_test)
+
+# Đánh giá model
+from sklearn.metrics import mean_squared_error, r2_score
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print(f"Mean Squared Error: {mse:.2f}")
+print(f"R² Score: {r2:.2f}")
+print(f"Hệ số: {model.coef_[0]:.2f}")
+print(f"Intercept: {model.intercept_:.2f}")
+
+# Vẽ biểu đồ
+plt.figure(figsize=(10, 6))
+plt.scatter(X_test, y_test, color='blue', alpha=0.6, label='Dữ liệu thực')
+plt.plot(X_test, y_pred, color='red', linewidth=2, label='Dự đoán')
+plt.xlabel('X')
+plt.ylabel('y')
+plt.title('Linear Regression Demo')
+plt.legend()
+plt.show()
+\`\`\`
+
+## Ứng dụng thực tế
+- Dự đoán giá nhà
+- Phân loại email spam
+- Nhận dạng hình ảnh
+- Gợi ý sản phẩm
+
+*Lưu ý: Đây là response demo do API đã đạt giới hạn. Hãy thử lại sau hoặc liên hệ để cập nhật API key.*`
+    };
+  }
+  
+  return {
+    text: `Xin lỗi, API hiện tại đã đạt giới hạn quota. Đây là response demo.
+
+Để giải quyết vấn đề này:
+1. Chờ quota reset (thường là 24h)
+2. Cập nhật API key mới
+3. Nâng cấp plan API
+
+Câu hỏi của bạn: "${userMessage}"
+
+*Response này được tạo tự động khi API không khả dụng.*`
+  };
+}
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
