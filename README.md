@@ -31,23 +31,27 @@ Modern responsive chatbot interface with Gemini AI integration.
 ## 🔧 Local Development
 
 1. Clone the repository:
+
 ```bash
 git clone <your-repo-url>
 cd GPT
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Create `.env` file:
+
 ```bash
 GEMINI_API_KEY=your_gemini_api_key_here
 PORT=5500
 ```
 
 4. Start the development server:
+
 ```bash
 npm start
 ```
@@ -59,16 +63,19 @@ npm start
 ### Method 1: Vercel CLI
 
 1. Install Vercel CLI:
+
 ```bash
 npm i -g vercel
 ```
 
 2. Login to Vercel:
+
 ```bash
 vercel login
 ```
 
 3. Deploy:
+
 ```bash
 vercel
 ```
@@ -87,10 +94,12 @@ vercel
 ## 🔐 Environment Variables
 
 ### Required Variables:
+
 - `GEMINI_API_KEY`: Get from [Google AI Studio](https://makersuite.google.com/app/apikey)
 - `NODE_ENV`: Set to "production" for deployment
 
 ### Getting Gemini API Key:
+
 1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create a new API key
 3. Copy the key to your environment variables
@@ -114,16 +123,21 @@ GPT/
 ## 🎨 Customization
 
 ### Themes
+
 - Edit CSS custom properties in `styles.css`
 - Add new themes in the settings modal
 
 ### AI Model
+
 - Change model in `api/chat.js`:
+
 ```javascript
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 ```
 
 ### Responsive Breakpoints
+
 - Mobile: `max-width: 768px`
 - Small Mobile: `max-width: 480px`
 - Touch Devices: `pointer: coarse`
@@ -133,10 +147,12 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 ### Common Issues:
 
 1. **404 Error on Vercel**:
+
    - Make sure `vercel.json` is configured correctly
    - Check that API routes are in `/api/` folder
 
 2. **API Key Issues**:
+
    - Verify API key in Vercel environment variables
    - Check API key permissions in Google AI Studio
 
@@ -158,5 +174,3 @@ MIT License - feel free to use and modify for your projects.
 5. Open a Pull Request
 
 ---
-
-
